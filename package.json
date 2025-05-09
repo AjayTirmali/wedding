@@ -1,0 +1,20 @@
+{
+  "name": "wedding-planner",
+  "version": "1.0.0",
+  "description": "A MERN stack wedding planning application",
+  "main": "server/index.js",
+  "scripts": {
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install"
+  },
+  "keywords": [
+    "wedding",
+    "planning",
+    "MERN",
+    "mongodb",
+    "express",
+    "react",
+    "node"
+  ],
+  "author": "",
+  "license": "MIT"
+}
