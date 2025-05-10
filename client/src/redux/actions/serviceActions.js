@@ -41,7 +41,12 @@ export const getServiceById = (id) => async dispatch => {
 // Get services by category
 export const getServicesByCategory = (category) => async dispatch => {
   try {
-    const res = await axios.get(`/api/services/category/${category}`);
+    const res = await axios.get(`/api/services`, {
+      params: { 
+        category,
+        timestamp: new Date().getTime()
+      }
+    });
 
     dispatch({
       type: 'GET_SERVICES',

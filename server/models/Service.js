@@ -10,6 +10,11 @@ const ServiceSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  location: {
+    type: String,
+    required: true,
+    trim: true
+  },
   category: {
     type: String,
     enum: ['Decoration', 'Catering', 'Photography', 'Entertainment', 'Venue', 'Transportation', 'Other'],
@@ -23,6 +28,20 @@ const ServiceSchema = new mongoose.Schema({
     type: String,
     enum: ['Fixed', 'Per Hour', 'Per Person', 'Custom'],
     default: 'Fixed'
+  },
+  rating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  reviewCount: {
+    type: Number,
+    default: 0
+  },
+  featured: {
+    type: Boolean,
+    default: false
   },
   images: [{
     type: String

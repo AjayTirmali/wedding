@@ -14,6 +14,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Services from './pages/Services';
+import ServiceDetails from './pages/ServiceDetails';
 import Contact from './pages/Contact';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
@@ -48,6 +49,7 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/services" element={<Services />} />
+          <Route path="/services/:id" element={<ServiceDetails />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/gallery" element={<Gallery />} />
           
@@ -58,17 +60,15 @@ const App = () => {
           } />
           
       
-          
-          {/* Admin route */}
+            {/* Admin route */}
           <Route path="/admin" element={
             <AdminRoute>
               <AdminDashboard />
             </AdminRoute>
           } />
           
-          {/* Commented out routes to be implemented later */}
-          {/* <Route path="/services/:id" element={<ServiceDetail />} />
-          <Route path="/portfolio" element={<Portfolio />} /> */}
+          {/* Future routes */}
+          {/* <Route path="/portfolio" element={<Portfolio />} /> */}
         </Routes>
       </Box>
       <Footer />

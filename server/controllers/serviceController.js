@@ -103,21 +103,31 @@ const sampleServiceProviders = {
 // Sample services data
 const sampleServices = [
   {
-    name: "Premium Wedding Decoration Package",
+    name: "Gulmohar inc. - Bespoke Weddings",
     description: "Transform your venue into a magical setting with our luxury decoration services. We offer custom themes, floral arrangements, and lighting design.",
+    location: "Baner, Pune",
     category: "Decoration",
-    price: 2500,
+    price: 250000,
     pricingType: "Fixed",
-    features: ["Custom theme design", "Premium floral arrangements", "Advanced lighting setup", "Furniture and props included"],
+    rating: 4.9,
+    reviewCount: 25,
+    featured: true,
+    images: ['/images/image_1.jpeg'],
+    features: ["Inhouse & outside decoration", "Unique Ideas", "In High Demand"],
     isAvailable: true
   },
   {
-    name: "Elite Photography Collection",
+    name: "Genesis Inc",
     description: "Capture every precious moment of your special day with our professional photography team. Includes pre-wedding shoot and complete ceremony coverage.",
+    location: "Bund Garden Road, Pune",
     category: "Photography",
-    price: 3000,
+    price: 200000,
     pricingType: "Fixed",
-    features: ["Pre-wedding photoshoot", "Full ceremony coverage", "Professional editing", "Digital and printed albums"],
+    rating: 4.9,
+    reviewCount: 19,
+    featured: false,
+    images: ['/images/image_11.jpeg'],
+    features: ["Inhouse & outside decoration", "High Quality Service"],
     isAvailable: true
   },
   {
@@ -143,12 +153,25 @@ const sampleServices = [
 // Get all services
 exports.getAllServices = async (req, res) => {
   try {
-    const { category, available, sort, minPrice, maxPrice } = req.query;
+    const { category, available, sort, minPrice, maxPrice, featured, location, minRating } = req.query;
     let query = {};
 
     // Apply filters
-    if (category) query.category = category;
+    if (category && category !== 'All') {
+      // Handle both direct category match and alternative categories
+      const categoryMap = {
+        'Planning': ['Planning', 'Full Planning', 'Day-of Coordination'],
+        'Decoration': ['Decoration', 'Venue Decoration', 'Stage Decoration'],
+        'Catering': ['Catering', 'Food Service', 'Beverage Service'],
+        'Photography': ['Photography', 'Videography', 'Photo Booth']
+      };
+      
+      query.category = categoryMap[category] ? { $in: categoryMap[category] } : category;
+    }
     if (available !== undefined) query.isAvailable = available === 'true';
+    if (featured !== undefined) query.featured = featured === 'true';
+    if (location) query.location = new RegExp(location, 'i'); // Case-insensitive location search
+    if (minRating) query.rating = { $gte: Number(minRating) };
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);

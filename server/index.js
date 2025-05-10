@@ -20,9 +20,18 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: process.env.NODE_ENV === 'production' ? undefined : 'http://localhost:3000',
-    methods: ['GET', 'POST']
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
+
+// Middlewares
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? undefined : 'http://localhost:3000',
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
@@ -101,20 +110,29 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/chat', chatRoutes);
 
-// Serve static files from React build directory in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
+// Serve static files in development
+app.use(express.static(path.join(__dirname, '../client/public')));
 
-  // Handle React routing, return all requests to React app
-  app.get('*', (req, res) => {
+// Handle React routing in development and production
+app.get('*', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
-  });
-}
+  } else {
+    res.sendFile(path.join(__dirname, '../client/public', 'index.html'));
+  }
+});
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('Could not connect to MongoDB', err));
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  retryWrites: true,
+})
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => {
+  console.error('Could not connect to MongoDB:', err.message);
+  process.exit(1);
+});
 
 // Start server
 const PORT = process.env.PORT || 5000;

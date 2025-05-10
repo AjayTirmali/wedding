@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
+import '../styles/Services.css';
 import {
   Container,
   Typography,
@@ -38,6 +39,7 @@ import {
 } from '@mui/icons-material';
 import axios from 'axios';
 import io from 'socket.io-client';
+import { getServices, getServicesByCategory } from '../redux/actions/serviceActions';
 
 const socketUrl = process.env.NODE_ENV === 'production' 
   ? window.location.origin 
@@ -68,26 +70,46 @@ const ChatWindow = styled(Box)(({ theme }) => ({
   boxShadow: theme.shadows[10]
 }));
 
-const StyledCard = styled(Paper)(({ theme }) => ({
+const ServiceCard = styled(Card)(({ theme }) => ({
+  position: 'relative',
+  height: '100%',
   display: 'flex',
   flexDirection: 'column',
-  height: '100%',
-  borderRadius: theme.shape.borderRadius,
-  boxShadow: theme.shadows[3],
-  overflow: 'hidden',
-  transition: 'transform 0.3s ease',
-  '&:hover': {
-    transform: 'translateY(-4px)',
-    boxShadow: theme.shadows[6]
+  '& .MuiCardMedia-root': {
+    height: 280,
+    position: 'relative'
+  },
+  '& .featured-badge': {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    backgroundColor: '#FFD700',
+    color: '#000',
+    padding: '4px 12px',
+    borderRadius: '4px',
+    fontWeight: 'bold',
+    zIndex: 1
   }
 }));
 
-const CategoryChip = styled(Chip)(({ theme }) => ({
+const RatingBadge = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '4px',
+  backgroundColor: theme.palette.primary.main,
+  color: '#fff',
+  padding: '4px 8px',
+  borderRadius: '4px',
   position: 'absolute',
-  top: theme.spacing(1),
-  left: theme.spacing(1),
-  zIndex: 1,
-  fontWeight: 500
+  right: 16,
+  bottom: 16
+}));
+
+const PriceTag = styled(Typography)(({ theme }) => ({
+  fontWeight: 'bold',
+  color: theme.palette.primary.main,
+  fontSize: '1.25rem',
+  marginTop: theme.spacing(1)
 }));
 
 const Services = () => {
@@ -95,284 +117,233 @@ const Services = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { services, loading } = useSelector(state => state.services);
-  const [category, setCategory] = useState('All');
-  const [categoryImages, setCategoryImages] = useState({});
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [messageInput, setMessageInput] = useState('');
-  const [messageLoading, setMessageLoading] = useState(false);
-  const [typingStatus, setTypingStatus] = useState(null);
-  const socketRef = useRef();
-  const typingTimeoutRef = useRef();
-
-  const fetchServices = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/services', {
-        params: {
-          category: category === 'All' ? undefined : category
-        }
-      });
-      
-      dispatch({ type: 'GET_SERVICES', payload: response.data });
-    } catch (err) {
-      console.error('Error fetching services:', err);
+  
+  // Get category from URL parameters
+  const searchParams = new URLSearchParams(window.location.search);
+  const [category, setCategory] = useState(searchParams.get('category') || 'All');
+  // Sample data for testing
+  const sampleData = [
+    {
+      _id: '1',
+      name: 'Gulmohar inc. - Bespoke Weddings',
+      description: 'Transform your venue into a magical setting with our luxury decoration services.',
+      location: 'Baner, Pune',
+      category: 'Decoration',
+      price: 250000,
+      rating: 4.9,
+      reviewCount: 25,
+      featured: true,
+      images: ['/images/image_1.jpeg'],
+      features: ['Inhouse & outside decoration', 'Unique Ideas', 'In High Demand']
+    },
+    {
+      _id: '2',
+      name: 'Genesis Photography',
+      description: 'Professional photography services for your special day.',
+      location: 'Bund Garden Road, Pune',
+      category: 'Photography',
+      price: 150000,
+      rating: 4.8,
+      reviewCount: 32,
+      featured: false,
+      images: ['/images/image_11.jpeg'],
+      features: ['Pre-wedding shoot', 'Full day coverage', 'Quick delivery']
+    },
+    {
+      _id: '3',
+      name: 'Royal Feast Catering',
+      description: 'Exquisite culinary experiences for your wedding.',
+      location: 'Koregaon Park, Pune',
+      category: 'Catering',
+      price: 1200,
+      rating: 4.7,
+      reviewCount: 45,
+      featured: true,
+      images: ['/images/image_6.jpeg'],
+      features: ['Multi-cuisine', 'Professional staff', 'Custom menus']
+    },
+    {
+      _id: '4',
+      name: 'Perfect Planning',
+      description: 'Comprehensive wedding planning services.',
+      location: 'Viman Nagar, Pune',
+      category: 'Planning',
+      price: 300000,
+      rating: 5.0,
+      reviewCount: 18,
+      featured: true,
+      images: ['/images/image_21.jpeg'],
+      features: ['End-to-end planning', 'Vendor management', 'Budget planning']
     }
-  }, [dispatch, category]);
-
-  const assignCategoryImages = () => {
-    const images = Array.from({length: 35}, (_, i) => `/images/image_${i + 1}.jpeg`);
-    const categories = {
-      'Decoration': images.slice(0, 5),
-      'Catering': images.slice(5, 10),
-      'Photography': images.slice(10, 15),
-      'Entertainment': images.slice(15, 20),
-      'Venue': images.slice(20, 25),
-      'Transportation': images.slice(25, 30),
-      'Other': images.slice(30, 35)
-    };
-    setCategoryImages(categories);
-  };
-
-  useEffect(() => {
-    fetchServices();
-    assignCategoryImages();
-  }, [fetchServices]);
-
-  const handleProviderSelect = (provider, serviceId) => {
-    setSelectedProvider({ ...provider, serviceId });
-    setChatOpen(true);
-    setMessages([{
-      id: Date.now(),
-      text: `Hello! I'm the AI assistant for ${provider.name}. How can I help you today?`,
-      sender: 'ai'
-    }]);
-  };
-
-  const categories = [
-    'All',
-    'Decoration',
-    'Catering',
-    'Photography',
-    'Entertainment',
-    'Venue',
-    'Transportation',
-    'Other'
   ];
 
-  if (loading) {
+  useEffect(() => {
+    // Set sample data while server is not available
+    dispatch({
+      type: 'GET_SERVICES',
+      payload: sampleData
+    });
+  }, [dispatch]);
+
+  const handleCategoryChange = (newCategory) => {
+    setCategory(newCategory);
+    navigate(`/services?category=${newCategory}`);
+  };
+
+  const handleServiceClick = (service) => {
+    navigate(`/services/${service._id}`);
+  };
+
+  const handleChatClick = (service) => {
+    setSelectedProvider(service);
+    setChatOpen(true);
+  };
+
+  const renderServices = () => {
+    if (loading) {
+      return (
+        <Box display="flex" justifyContent="center" p={4}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    const filteredServices = category === 'All' 
+      ? services 
+      : services.filter(service => service.category === category);
+
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        minHeight: '60vh' 
-      }}>
-        <CircularProgress />
-      </Box>
+      <Grid container spacing={3}>
+        {filteredServices.map((service) => (
+          <Grid item xs={12} sm={6} md={4} key={service._id}>
+            <ServiceCard>
+              {service.featured && (
+                <Box className="featured-badge">Featured</Box>
+              )}
+              <Box position="relative">
+                <CardMedia
+                  component="img"
+                  image={service.images?.[0] || getServiceImage(service.category)}
+                  alt={service.name}
+                  sx={{ height: 280 }}
+                />
+                <RatingBadge>
+                  <Star sx={{ fontSize: 16 }} />
+                  <Typography variant="body2">
+                    {service.rating.toFixed(1)} ({service.reviewCount})
+                  </Typography>
+                </RatingBadge>
+              </Box>
+              
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  {service.name}
+                </Typography>
+                <Box display="flex" alignItems="center" gap={1} mb={1}>
+                  <PersonIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    {service.location}
+                  </Typography>
+                </Box>
+                
+                <PriceTag>
+                  ₹{service.price.toLocaleString('en-IN')} Onwards
+                </PriceTag>
+
+                <Box mt={2}>
+                  {service.features?.map((feature, index) => (
+                    <Chip
+                      key={index}
+                      label={feature}
+                      size="small"
+                      sx={{ mr: 0.5, mb: 0.5 }}
+                    />
+                  ))}
+                </Box>
+              </CardContent>
+
+              <CardActions sx={{ mt: 'auto', justifyContent: 'space-between', px: 2, pb: 2 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => handleServiceClick(service)}
+                >
+                  View Details
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  endIcon={<ChatIcon />}
+                  onClick={() => handleChatClick(service)}
+                >
+                  Chat Now
+                </Button>
+              </CardActions>
+            </ServiceCard>
+          </Grid>
+        ))}
+      </Grid>
     );
-  }
+  };
 
   return (
-    <Box sx={{ 
-      bgcolor: alpha(theme.palette.primary.main, 0.03),
-      minHeight: '100vh',
-      py: 8 
-    }}>
-      <Container maxWidth="lg">
-        <Fade in timeout={1000}>
-          <Box>
-            <Typography 
-              variant="h2" 
-              component="h1" 
-              align="center" 
-              gutterBottom
-              sx={{
-                fontFamily: 'Playfair Display',
-                fontWeight: 500,
-                mb: 2
-              }}
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom align="center" mb={4}>
+        Wedding Planners & Services
+      </Typography>
+      
+      <Box mb={4}>
+        <Grid container spacing={2} justifyContent="center">
+          <Grid item>
+            <Button 
+              variant={category === 'All' ? 'contained' : 'outlined'} 
+              onClick={() => handleCategoryChange('All')}
+              sx={{ mx: 1 }}
             >
-              Our Services
-            </Typography>
-            <Typography 
-              variant="h5" 
-              align="center" 
-              color="text.secondary" 
-              paragraph
-              sx={{
-                fontFamily: 'Cormorant Garamond',
-                mb: 6
-              }}
+              All
+            </Button>
+            <Button 
+              variant={category === 'Planning' ? 'contained' : 'outlined'} 
+              onClick={() => handleCategoryChange('Planning')}
+              sx={{ mx: 1 }}
             >
-              Discover our curated collection of premium wedding services
-            </Typography>
-          </Box>
-        </Fade>
-
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          mb: 6 
-        }}>
-          <Paper 
-            elevation={2} 
-            sx={{ 
-              p: 0.5, 
-              display: 'flex', 
-              gap: 1, 
-              flexWrap: 'wrap',
-              justifyContent: 'center' 
-            }}
-          >
-            {categories.map((cat) => (
-              <Chip
-                key={cat}
-                label={cat}
-                onClick={() => setCategory(cat)}
-                color={category === cat ? 'primary' : 'default'}
-                sx={{ 
-                  m: 0.5,
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: 2
-                  }
-                }}
-              />
-            ))}
-          </Paper>
-        </Box>
-
-        <Grid container spacing={4}>
-          {services && services.length > 0 ? (
-            services.map((service, index) => (
-              <Grid item key={service._id || service.id} xs={12} sm={6} md={4}>
-                <Grow in timeout={(index + 1) * 200}>
-                  <StyledCard>
-                    <CategoryChip 
-                      label={service.category} 
-                      color="primary"
-                    />
-                    <CardMedia
-                      component="img"
-                      height="200"
-                      image={service.images && service.images.length > 0 
-                        ? service.images[0] 
-                        : getServiceImage(service.category)}
-                      alt={service.name}
-                      sx={{ objectFit: 'cover' }}
-                    />
-                    <CardContent>
-                      <Typography 
-                        variant="h5" 
-                        component="h2"
-                        gutterBottom
-                        sx={{ 
-                          fontFamily: 'Playfair Display',
-                          fontWeight: 500
-                        }}
-                      >
-                        {service.name}
-                      </Typography>
-                      <Typography 
-                        variant="body2" 
-                        color="text.secondary"
-                        paragraph
-                      >
-                        {service.description}
-                      </Typography>
-                      
-                      {service.features && service.features.length > 0 && (
-                        <List dense sx={{ mb: 2 }}>
-                          {service.features.slice(0, 3).map((feature, idx) => (
-                            <ListItem key={idx} disableGutters>
-                              <ListItemIcon sx={{ minWidth: 32 }}>
-                                <CheckCircle color="primary" fontSize="small" />
-                              </ListItemIcon>
-                              <ListItemText 
-                                primary={feature}
-                                primaryTypographyProps={{
-                                  variant: 'body2'
-                                }}
-                              />
-                            </ListItem>
-                          ))}
-                        </List>
-                      )}
-
-                      <Box sx={{ 
-                        mt: 'auto',
-                        pt: 2,
-                        borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
-                      }}>
-                        <Typography variant="h6" color="primary" sx={{ mb: 2 }}>
-                          ${service.price}
-                          {service.pricingType !== 'Fixed' && (
-                            <Typography 
-                              component="span" 
-                              variant="body2"
-                              sx={{ ml: 0.5 }}
-                            >
-                              /{service.pricingType.toLowerCase().replace('per ', '')}
-                            </Typography>
-                          )}
-                        </Typography>
-                        
-                        {service.serviceProviders && service.serviceProviders.map((provider, idx) => (
-                          <Card 
-                            key={idx}
-                            variant="outlined" 
-                            sx={{ mb: 2 }}
-                          >
-                            <CardContent sx={{ pb: 1 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <PersonIcon sx={{ mr: 1 }} />
-                                <Typography variant="subtitle1">{provider.name}</Typography>
-                              </Box>
-                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <Star sx={{ mr: 1, color: 'warning.main' }} />
-                                <Typography variant="body2">
-                                  {provider.rating.average.toFixed(1)} ({provider.rating.count} reviews)
-                                </Typography>
-                              </Box>
-                              <Button
-                                variant="outlined"
-                                startIcon={<ChatIcon />}
-                                fullWidth
-                                onClick={() => handleProviderSelect(provider, service._id)}
-                                sx={{ mt: 1 }}
-                              >
-                                Chat with Provider
-                              </Button>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </Box>
-                    </CardContent>
-                  </StyledCard>
-                </Grow>
-              </Grid>
-            ))
-          ) : (
-            <Grid item xs={12}>
-              <Paper sx={{ p: 4, textAlign: 'center' }}>
-                <Typography variant="h6" color="text.secondary">
-                  No services found in this category
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  onClick={() => setCategory('All')}
-                  sx={{ mt: 2 }}
-                >
-                  View All Services
-                </Button>
-              </Paper>
-            </Grid>
-          )}
+              Planning
+            </Button>
+            <Button 
+              variant={category === 'Catering' ? 'contained' : 'outlined'} 
+              onClick={() => handleCategoryChange('Catering')}
+              sx={{ mx: 1 }}
+            >
+              Catering
+            </Button>
+            <Button 
+              variant={category === 'Photography' ? 'contained' : 'outlined'} 
+              onClick={() => handleCategoryChange('Photography')}
+              sx={{ mx: 1 }}
+            >
+              Photography
+            </Button>
+            <Button 
+              variant={category === 'Decoration' ? 'contained' : 'outlined'} 
+              onClick={() => handleCategoryChange('Decoration')}
+              sx={{ mx: 1 }}
+            >
+              Decoration
+            </Button>
+          </Grid>
         </Grid>
-      </Container>
-    </Box>
+      </Box>
+
+      {renderServices()}
+
+      {chatOpen && selectedProvider && (
+        <ChatWindow>
+          {/* Chat window content */}
+        </ChatWindow>
+      )}
+    </Container>
   );
 };
 

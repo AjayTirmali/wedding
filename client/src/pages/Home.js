@@ -193,7 +193,11 @@ const Home = () => {
             <Grid item xs={12} sm={6} md={3}>
               <Grow in timeout={1000}>
                 <StyledCard>
-                  <CardActionArea sx={{ height: '100%' }}>
+                  <CardActionArea 
+                    component={Link} 
+                    to="/services?category=Planning" 
+                    sx={{ height: '100%' }}
+                  >
                     <CardContent sx={{ textAlign: 'center' }}>
                       <Celebration sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />
                       <Typography 
@@ -216,7 +220,11 @@ const Home = () => {
             <Grid item xs={12} sm={6} md={3}>
               <Grow in timeout={1500}>
                 <StyledCard>
-                  <CardActionArea sx={{ height: '100%' }}>
+                  <CardActionArea 
+                    component={Link} 
+                    to="/services?category=Catering" 
+                    sx={{ height: '100%' }}
+                  >
                     <CardContent sx={{ textAlign: 'center' }}>
                       <Restaurant sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />
                       <Typography 
@@ -239,7 +247,11 @@ const Home = () => {
             <Grid item xs={12} sm={6} md={3}>
               <Grow in timeout={2000}>
                 <StyledCard>
-                  <CardActionArea sx={{ height: '100%' }}>
+                  <CardActionArea 
+                    component={Link} 
+                    to="/services?category=Photography" 
+                    sx={{ height: '100%' }}
+                  >
                     <CardContent sx={{ textAlign: 'center' }}>
                       <PhotoCamera sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />
                       <Typography 
@@ -262,7 +274,11 @@ const Home = () => {
             <Grid item xs={12} sm={6} md={3}>
               <Grow in timeout={2500}>
                 <StyledCard>
-                  <CardActionArea sx={{ height: '100%' }}>
+                  <CardActionArea 
+                    component={Link} 
+                    to="/services?category=Decoration" 
+                    sx={{ height: '100%' }}
+                  >
                     <CardContent sx={{ textAlign: 'center' }}>
                       <EmojiEvents sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />
                       <Typography 
