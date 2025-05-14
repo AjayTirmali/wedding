@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
   Container,
@@ -28,6 +28,7 @@ const FeatureChip = styled(Chip)(({ theme }) => ({
 
 const ServiceDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { services } = useSelector(state => state.services);
   const [service, setService] = useState(null);
 
@@ -35,6 +36,14 @@ const ServiceDetails = () => {
     const serviceDetails = services.find(s => s._id === id);
     setService(serviceDetails);
   }, [id, services]);
+
+  const handleAddToCart = () => {
+    navigate('/services', {
+      state: {
+        addToCart: service,
+      }
+    });
+  };
 
   if (!service) {
     return (
@@ -120,6 +129,16 @@ const ServiceDetails = () => {
               sx={{ mt: 2 }}
             >
               Chat with Provider
+            </Button>
+
+            <Button
+              variant="contained"
+              fullWidth
+              size="large"
+              onClick={handleAddToCart}
+              sx={{ mt: 2 }}
+            >
+              Add to Cart
             </Button>
 
             <Divider sx={{ my: 3 }} />

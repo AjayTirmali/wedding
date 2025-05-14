@@ -10,6 +10,7 @@ const bookingRoutes = require('./routes/bookings');
 const serviceRoutes = require('./routes/services');
 const uploadRoutes = require('./routes/uploads');
 const chatRoutes = require('./routes/chat');
+const paymentRoutes = require('./routes/payment');
 
 // Load environment variables
 dotenv.config();
@@ -109,6 +110,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Serve static files in development
 app.use(express.static(path.join(__dirname, '../client/public')));

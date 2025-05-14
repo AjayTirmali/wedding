@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import '../styles/Services.css';
 import {
   Container,
@@ -25,7 +25,8 @@ import {
   ListItemIcon,
   ListItemText,
   CardMedia,
-  Card
+  Card,
+  Alert
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -112,13 +113,34 @@ const PriceTag = styled(Typography)(({ theme }) => ({
   marginTop: theme.spacing(1)
 }));
 
+const CartPreview = styled(Box)(({ theme }) => ({
+  position: 'fixed',
+  bottom: 0,
+  left: 0,
+  right: 0,
+  padding: theme.spacing(2),
+  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+  backdropFilter: 'blur(10px)',
+  boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.1)',
+  zIndex: 1000,
+  transform: 'translateY(100%)',
+  transition: 'transform 0.3s ease-in-out',
+  '&.visible': {
+    transform: 'translateY(0)',
+  }
+}));
+
 const Services = () => {
   const theme = useTheme();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { services, loading } = useSelector(state => state.services);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [selectedServices, setSelectedServices] = useState([]);
+  const [cartVisible, setCartVisible] = useState(false);
+  const [error, setError] = useState(location.state?.error || null);
   
   // Get category from URL parameters
   const searchParams = new URLSearchParams(window.location.search);
@@ -187,6 +209,10 @@ const Services = () => {
     });
   }, [dispatch]);
 
+  useEffect(() => {
+    return () => setError(null);
+  }, [category]);
+
   const handleCategoryChange = (newCategory) => {
     setCategory(newCategory);
     navigate(`/services?category=${newCategory}`);
@@ -199,6 +225,33 @@ const Services = () => {
   const handleChatClick = (service) => {
     setSelectedProvider(service);
     setChatOpen(true);
+  };
+
+  const handleAddToCart = (service) => {
+    if (!selectedServices.find(s => s._id === service._id)) {
+      setSelectedServices([...selectedServices, service]);
+      setCartVisible(true);
+    }
+  };
+
+  const handleRemoveFromCart = (serviceId) => {
+    setSelectedServices(selectedServices.filter(s => s._id !== serviceId));
+    if (selectedServices.length <= 1) {
+      setCartVisible(false);
+    }
+  };
+
+  const calculateTotal = () => {
+    return selectedServices.reduce((total, service) => total + service.price, 0);
+  };
+
+  const handleProceedToPayment = () => {
+    navigate('/payment', {
+      state: {
+        selectedServices,
+        totalAmount: calculateTotal()
+      }
+    });
   };
 
   const renderServices = () => {
@@ -249,7 +302,7 @@ const Services = () => {
                 </Box>
                 
                 <PriceTag>
-                  ₹{service.price.toLocaleString('en-IN')} Onwards
+                  ₹{service.price.toLocaleString('en-IN')} {service.pricingType === 'Per Person' ? 'per person' : ''}
                 </PriceTag>
 
                 <Box mt={2}>
@@ -275,10 +328,10 @@ const Services = () => {
                 <Button
                   variant="contained"
                   size="small"
-                  endIcon={<ChatIcon />}
-                  onClick={() => handleChatClick(service)}
+                  onClick={() => handleAddToCart(service)}
+                  disabled={selectedServices.find(s => s._id === service._id)}
                 >
-                  Chat Now
+                  {selectedServices.find(s => s._id === service._id) ? 'Added' : 'Add to Cart'}
                 </Button>
               </CardActions>
             </ServiceCard>
@@ -293,6 +346,16 @@ const Services = () => {
       <Typography variant="h4" component="h1" gutterBottom align="center" mb={4}>
         Wedding Planners & Services
       </Typography>
+      
+      {error && (
+        <Alert 
+          severity="warning" 
+          sx={{ mb: 3 }}
+          onClose={() => setError(null)}
+        >
+          {error}
+        </Alert>
+      )}
       
       <Box mb={4}>
         <Grid container spacing={2} justifyContent="center">
@@ -337,6 +400,42 @@ const Services = () => {
       </Box>
 
       {renderServices()}
+
+      {cartVisible && (
+        <CartPreview className="visible">
+          <Container maxWidth="lg">
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <Box display="flex" gap={2} alignItems="center">
+                  {selectedServices.map((service) => (
+                    <Chip
+                      key={service._id}
+                      label={`${service.name} - ₹${service.price.toLocaleString('en-IN')}`}
+                      onDelete={() => handleRemoveFromCart(service._id)}
+                      sx={{ bgcolor: 'white' }}
+                    />
+                  ))}
+                </Box>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Box display="flex" justifyContent="flex-end" alignItems="center" gap={2}>
+                  <Typography variant="h6">
+                    Total: ₹{calculateTotal().toLocaleString('en-IN')}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleProceedToPayment}
+                    disabled={selectedServices.length === 0}
+                  >
+                    Proceed to Payment
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
+          </Container>
+        </CartPreview>
+      )}
 
       {chatOpen && selectedProvider && (
         <ChatWindow>

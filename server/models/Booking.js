@@ -41,6 +41,25 @@ const BookingSchema = new mongoose.Schema({
     enum: ['Pending', 'Confirmed', 'Completed', 'Cancelled'],
     default: 'Pending'
   },
+  // Razorpay specific fields
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'processing', 'completed', 'failed'],
+    default: 'pending'
+  },
+  razorpayOrderId: {
+    type: String
+  },
+  razorpayPaymentId: {
+    type: String
+  },
+  razorpaySignature: {
+    type: String
+  },
+  totalAmount: {
+    type: Number,
+    required: true
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -57,4 +76,4 @@ BookingSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('Booking', BookingSchema); 
+module.exports = mongoose.model('Booking', BookingSchema);

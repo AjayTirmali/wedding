@@ -19,6 +19,7 @@ import Contact from './pages/Contact';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Gallery from './pages/Gallery';
+import Payment from './pages/Payment';  // Add this import
 
 // Route Protection
 import PrivateRoute from './utils/PrivateRoute';
@@ -52,6 +53,11 @@ const App = () => {
           <Route path="/services/:id" element={<ServiceDetails />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/gallery" element={<Gallery />} />
+          <Route path="/payment" element={
+            <PrivateRoute>
+              <Payment />
+            </PrivateRoute>
+          } />
           
           <Route path="/dashboard" element={
             <PrivateRoute>
@@ -59,8 +65,7 @@ const App = () => {
             </PrivateRoute>
           } />
           
-      
-            {/* Admin route */}
+          {/* Admin route */}
           <Route path="/admin" element={
             <AdminRoute>
               <AdminDashboard />
