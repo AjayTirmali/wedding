@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const admin = require('../middleware/admin');
 const serviceController = require('../controllers/serviceController');
+const uploadController = require('../controllers/uploadController');
 
 // Public routes
 router.get('/', serviceController.getAllServices);
@@ -22,5 +23,8 @@ router.delete('/categories/:id', [auth, admin], serviceController.deleteCategory
 
 // Initialize sample services (Admin only)
 router.post('/initialize', [auth, admin], serviceController.initializeSampleServices);
+
+// Upload service images (Admin only)
+router.post('/upload', [auth, admin], uploadController.uploadImages);
 
 module.exports = router;

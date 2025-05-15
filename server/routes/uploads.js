@@ -3,10 +3,15 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const uploadController = require('../controllers/uploadController');
 
-// @route   POST api/uploads
-// @desc    Upload an image
+// @route   POST api/uploads/single
+// @desc    Upload a single image
 // @access  Private (admin only)
-router.post('/', auth, uploadController.uploadImage);
+router.post('/single', auth, uploadController.uploadImage);
+
+// @route   POST api/uploads/multiple
+// @desc    Upload multiple images (up to 10)
+// @access  Private (admin only)
+router.post('/multiple', auth, uploadController.uploadImages);
 
 // @route   GET api/uploads
 // @desc    Get all uploads
@@ -18,4 +23,4 @@ router.get('/', uploadController.getAllUploads);
 // @access  Private (admin only)
 router.delete('/:filename', auth, uploadController.deleteUpload);
 
-module.exports = router; 
+module.exports = router;

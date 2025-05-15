@@ -6,12 +6,6 @@ import {
   Grid,
   Card,
   CardContent,
-  CardMedia,
-  CardActions,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
   Button,
   Box,
   Tabs,
@@ -38,9 +32,12 @@ import {
 import { 
   Add as AddIcon, 
   Edit as EditIcon, 
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  PhotoCamera
 } from '@mui/icons-material';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { getServices, createService, updateService, deleteService } from '../redux/actions/serviceActions';
+import { getCategories, createCategory, updateCategory, deleteCategory } from '../redux/actions/categoryActions';
 
 // Tab Panel Component
 function TabPanel(props) {
@@ -64,10 +61,11 @@ function TabPanel(props) {
 }
 
 const AdminDashboard = () => {
+  const dispatch = useDispatch();
   const [tabValue, setTabValue] = useState(0);
   const [users, setUsers] = useState([]);
-  const [services, setServices] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const { services } = useSelector(state => state.services);
+  const { categories } = useSelector(state => state.categories);
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogType, setDialogType] = useState('');
   const [currentItem, setCurrentItem] = useState(null);
@@ -79,8 +77,10 @@ const AdminDashboard = () => {
     description: '',
     category: '',
     price: '',
+    location: '',
     pricingType: 'Fixed',
-    features: []
+    features: [],
+    images: []
   });
 
   // New category form state
@@ -103,8 +103,10 @@ const AdminDashboard = () => {
         description: item.description,
         category: item.category,
         price: item.price,
+        location: item.location,
         pricingType: item.pricingType,
-        features: item.features || []
+        features: item.features || [],
+        images: item.images || []
       });
     } else if (type === 'editCategory' && item) {
       setNewCategory({
@@ -117,8 +119,10 @@ const AdminDashboard = () => {
         description: '',
         category: '',
         price: '',
+        location: '',
         pricingType: 'Fixed',
-        features: []
+        features: [],
+        images: []
       });
     } else if (type === 'newCategory') {
       setNewCategory({
@@ -150,76 +154,89 @@ const AdminDashboard = () => {
       [name]: value
     });
   };
-
-  const handleAddService = () => {
-    if (dialogType === 'newService') {
-      // Add new service
-      const newId = services.length > 0 ? Math.max(...services.map(s => s.id)) + 1 : 1;
-      const serviceToAdd = {
-        ...newService,
-        id: newId
-      };
+  const handleAddService = async () => {
+    try {
+      if (dialogType === 'newService') {
+        // Add new service using Redux action
+        await dispatch(createService(newService));
+      } else if (dialogType === 'editService') {
+        // Update existing service using Redux action
+        await dispatch(updateService(currentItem._id, newService));
+      }
       
-      setServices([...services, serviceToAdd]);
-    } else if (dialogType === 'editService') {
-      // Update existing service
-      const updatedServices = services.map(service => 
-        service.id === currentItem.id ? { ...service, ...newService } : service
-      );
-      
-      setServices(updatedServices);
+      // Refresh services list
+      dispatch(getServices());
+      handleCloseDialog();
+    } catch (error) {
+      console.error('Error:', error);
+      // You might want to show an error message to the user
     }
-    
-    handleCloseDialog();
   };
 
-  const handleAddCategory = () => {
-    if (dialogType === 'newCategory') {
-      // Add new category
-      const newId = categories.length > 0 ? Math.max(...categories.map(c => c.id)) + 1 : 1;
-      const categoryToAdd = {
-        ...newCategory,
-        id: newId
-      };
-      
-      setCategories([...categories, categoryToAdd]);
-    } else if (dialogType === 'editCategory') {
-      // Update existing category
-      const updatedCategories = categories.map(category => 
-        category.id === currentItem.id ? { ...category, ...newCategory } : category
-      );
-      
-      setCategories(updatedCategories);
+  const handleAddCategory = async () => {
+    try {
+      if (dialogType === 'newCategory') {
+        await dispatch(createCategory(newCategory));
+      } else if (dialogType === 'editCategory') {
+        await dispatch(updateCategory(currentItem._id, newCategory));
+      }
+      dispatch(getCategories());
+      handleCloseDialog();
+    } catch (error) {
+      console.error('Error:', error);
     }
+  };
+
+  const handleDeleteService = async (id) => {
+    try {
+      await dispatch(deleteService(id));
+      // Refresh services list
+      dispatch(getServices());
+    } catch (error) {
+      console.error('Error deleting service:', error);
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    try {
+      await dispatch(deleteCategory(id));
+      dispatch(getCategories());
+    } catch (error) {
+      console.error('Error deleting category:', error);
+    }
+  };
+
+  const handleImageUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    const formData = new FormData();
     
-    handleCloseDialog();
-  };
+    files.forEach(file => {
+      formData.append('images', file);
+    });
 
-  const handleDeleteService = (id) => {
-    setServices(services.filter(service => service.id !== id));
-  };
-
-  const handleDeleteCategory = (id) => {
-    setCategories(categories.filter(category => category.id !== id));
+    try {
+      const response = await fetch('/api/services/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await response.json();
+      if (data.urls) {
+        setNewService({
+          ...newService,
+          images: [...newService.images, ...data.urls]
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading images:', error);
+    }
   };
 
   useEffect(() => {
-    // Simulated data loading - in a real app, these would be API calls
-    setUsers([
-      { id: 1, name: 'User One', email: 'user1@example.com', role: 'client' },
-      { id: 2, name: 'User Two', email: 'user2@example.com', role: 'client' }
-    ]);
-    
-    setServices([
-      { id: 1, name: 'Full Planning', description: 'Comprehensive wedding planning', category: 'Planning', price: 2500, pricingType: 'Fixed' },
-      { id: 2, name: 'Day Coordination', description: 'Day-of coordination', category: 'Planning', price: 800, pricingType: 'Fixed' }
-    ]);
-    
-    setCategories([
-      { id: 1, name: 'Planning', description: 'Wedding planning services' },
-      { id: 2, name: 'Photography', description: 'Wedding photography services' }
-    ]);
-  }, []);
+    // Fetch real data from the server
+    dispatch(getServices());
+    dispatch(getCategories());
+  }, [dispatch]);
 
   // Dashboard overview content
   const renderDashboardContent = () => (
@@ -288,6 +305,7 @@ const AdminDashboard = () => {
             <TableRow>
               <TableCell>Name</TableCell>
               <TableCell>Category</TableCell>
+              <TableCell>Location</TableCell>
               <TableCell>Price</TableCell>
               <TableCell>Pricing Type</TableCell>
               <TableCell align="right">Actions</TableCell>
@@ -298,6 +316,7 @@ const AdminDashboard = () => {
               <TableRow key={service.id}>
                 <TableCell>{service.name}</TableCell>
                 <TableCell>{service.category}</TableCell>
+                <TableCell>{service.location}</TableCell>
                 <TableCell>${service.price}</TableCell>
                 <TableCell>{service.pricingType}</TableCell>
                 <TableCell align="right">
@@ -426,10 +445,8 @@ const AdminDashboard = () => {
       
       <TabPanel value={tabValue} index={3}>
         {renderUsersContent()}
-      </TabPanel>
-
-      {/* Service Dialog */}
-      <Dialog open={openDialog && (dialogType === 'newService' || dialogType === 'editService')} onClose={handleCloseDialog}>
+      </TabPanel>      {/* Service Dialog */}
+      <Dialog open={openDialog && (dialogType === 'newService' || dialogType === 'editService')} onClose={handleCloseDialog} maxWidth="md" fullWidth>
         <DialogTitle>{dialogType === 'newService' ? 'Add New Service' : 'Edit Service'}</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -443,6 +460,7 @@ const AdminDashboard = () => {
             fullWidth
             value={newService.name}
             onChange={handleServiceChange}
+            required
           />
           <TextField
             margin="dense"
@@ -453,21 +471,70 @@ const AdminDashboard = () => {
             rows={3}
             value={newService.description}
             onChange={handleServiceChange}
+            required
           />
-          <FormControl fullWidth margin="dense">
+          <TextField
+            margin="dense"
+            name="location"
+            label="Location"
+            fullWidth
+            value={newService.location}
+            onChange={handleServiceChange}
+            required
+            helperText="Enter the service location or availability area"
+          />
+          <FormControl fullWidth margin="dense" required>
             <InputLabel>Category</InputLabel>
             <Select
               name="category"
               value={newService.category}
               onChange={handleServiceChange}
+              label="Category"
             >
-              {categories.map(category => (
-                <MenuItem key={category.id} value={category.name}>
-                  {category.name}
-                </MenuItem>
-              ))}
+              <MenuItem value="Decoration">Decoration</MenuItem>
+              <MenuItem value="Catering">Catering</MenuItem>
+              <MenuItem value="Photography">Photography</MenuItem>
+              <MenuItem value="Entertainment">Entertainment</MenuItem>
+              <MenuItem value="Venue">Venue</MenuItem>
+              <MenuItem value="Transportation">Transportation</MenuItem>
+              <MenuItem value="Other">Other</MenuItem>
             </Select>
           </FormControl>
+          <Box sx={{ mt: 2, mb: 1 }}>
+            <input
+              accept="image/*"
+              style={{ display: 'none' }}
+              id="image-upload"
+              type="file"
+              multiple
+              onChange={handleImageUpload}
+            />
+            <label htmlFor="image-upload">
+              <Button
+                variant="outlined"
+                component="span"
+                startIcon={<PhotoCamera />}
+                sx={{ mr: 2 }}
+              >
+                Upload Images
+              </Button>
+            </label>
+            <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {newService.images.map((image, index) => (
+                <Box
+                  key={index}
+                  component="img"
+                  src={image}
+                  sx={{
+                    width: 100,
+                    height: 100,
+                    objectFit: 'cover',
+                    borderRadius: 1
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
           <TextField
             margin="dense"
             name="price"

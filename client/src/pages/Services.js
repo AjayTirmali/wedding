@@ -200,13 +200,9 @@ const Services = () => {
       features: ['End-to-end planning', 'Vendor management', 'Budget planning']
     }
   ];
-
   useEffect(() => {
-    // Set sample data while server is not available
-    dispatch({
-      type: 'GET_SERVICES',
-      payload: sampleData
-    });
+    // Fetch services from the server
+    dispatch(getServices());
   }, [dispatch]);
 
   useEffect(() => {

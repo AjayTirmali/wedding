@@ -19,8 +19,8 @@ const storage = multer.diskStorage({
 });
 
 // Check file type
-function checkFileType(file, cb) {
-  // Allowed extensions
+const checkFileType = (file, cb) => {
+  // Allowed file types
   const filetypes = /jpeg|jpg|png|gif/;
   // Check extension
   const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
@@ -32,10 +32,10 @@ function checkFileType(file, cb) {
   } else {
     cb('Error: Images only (jpeg, jpg, png, gif)!');
   }
-}
+};
 
-// Initialize upload
-const upload = multer({
+// Initialize upload middleware
+const uploadSingle = multer({
   storage: storage,
   limits: { fileSize: 5000000 }, // 5MB limit
   fileFilter: function (req, file, cb) {
@@ -43,63 +43,112 @@ const upload = multer({
   }
 }).single('image');
 
-// Upload image
-exports.uploadImage = (req, res) => {
+const uploadMultiple = multer({
+  storage: storage,
+  limits: { fileSize: 5000000 }, // 5MB limit
+  fileFilter: function (req, file, cb) {
+    checkFileType(file, cb);
+  }
+}).array('images', 10); // Allow up to 10 images
+
+// Upload single image controller
+const uploadImage = (req, res) => {
   // Check if user is admin
   if (req.user.role !== 'admin') {
     return res.status(403).json({ msg: 'Not authorized to perform this action' });
   }
-  
-  upload(req, res, (err) => {
+
+  uploadSingle(req, res, (err) => {
     if (err) {
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(400).json({ msg: 'File too large. Max size is 5MB' });
         }
         return res.status(400).json({ msg: err.message });
-      } else {
-        return res.status(400).json({ msg: err });
       }
-    } else {
-      if (!req.file) {
-        return res.status(400).json({ msg: 'No file uploaded' });
-      }
-      
-      // Return file path
-      const filePath = `/uploads/${req.file.filename}`;
-      res.json({ 
-        success: true, 
-        filePath,
-        originalName: req.file.originalname
-      });
+      return res.status(400).json({ msg: err });
     }
+
+    if (!req.file) {
+      return res.status(400).json({ msg: 'No file uploaded' });
+    }
+
+    res.status(200).json({
+      success: true,
+      file: req.file,
+      url: `/uploads/${req.file.filename}`
+    });
   });
 };
 
-// Get all uploads
-exports.getAllUploads = async (req, res) => {
+// Upload multiple images controller
+const uploadImages = (req, res) => {
+  // Check if user is admin
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ msg: 'Not authorized to perform this action' });
+  }
+
+  uploadMultiple(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ msg: 'File too large. Max size is 5MB' });
+        }
+        return res.status(400).json({ msg: err.message });
+      }
+      return res.status(400).json({ msg: err });
+    }    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        msg: 'No files uploaded' 
+      });
+    }
+
+    const fileUrls = req.files.map(file => ({
+      filename: file.filename,
+      url: `/uploads/${file.filename}`,
+      size: file.size,
+      mimetype: file.mimetype
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully uploaded ${req.files.length} image(s)`,
+      files: fileUrls
+    });
+  });
+};
+
+// Get all uploads controller
+const getAllUploads = async (req, res) => {
   try {
     const uploadsDir = path.join(__dirname, '../uploads');
     if (!fs.existsSync(uploadsDir)) {
-      return res.json([]);
+      return res.status(200).json({ files: [] });
     }
     
     const files = fs.readdirSync(uploadsDir);
     const fileObjects = files.map(filename => ({
       filename,
-      path: `/uploads/${filename}`,
+      url: `/uploads/${filename}`,
       uploadDate: fs.statSync(path.join(uploadsDir, filename)).mtime
     }));
     
-    res.json(fileObjects);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    res.status(200).json({
+      success: true,
+      files: fileObjects
+    });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
 };
 
-// Delete upload
-exports.deleteUpload = async (req, res) => {
+// Delete upload controller
+const deleteUpload = async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -114,10 +163,22 @@ exports.deleteUpload = async (req, res) => {
     }
     
     fs.unlinkSync(filePath);
-    
-    res.json({ success: true, msg: 'File deleted' });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    res.json({ 
+      success: true, 
+      msg: 'File deleted successfully' 
+    });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
-}; 
+};
+
+module.exports = {
+  uploadImage,
+  uploadImages,
+  getAllUploads,
+  deleteUpload
+};
