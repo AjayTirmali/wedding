@@ -29,10 +29,36 @@ const io = new Server(httpServer, {
 // Middlewares
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' ? undefined : 'http://localhost:3000',
-  credentials: true
+  credentials: true,
+  exposedHeaders: ['Content-Type', 'Content-Length']
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Configure static file serving for uploads and public images
+app.use('/images', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
+}, express.static(path.join(__dirname, '../client/public/images'), {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, path) => {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+  }
+}));
+
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
+}, express.static(path.join(__dirname, 'uploads'), {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true
+}));
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
@@ -96,13 +122,6 @@ app.use((req, res, next) => {
   req.io = io;
   next();
 });
-
-// Middlewares
-app.use(cors());
-app.use(express.json());
-
-// Serve static files from server/uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);

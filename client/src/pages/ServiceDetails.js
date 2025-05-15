@@ -7,8 +7,6 @@ import {
   Box,
   Grid,
   Button,
-  Card,
-  CardMedia,
   Chip,
   Divider,
   Paper,
@@ -21,6 +19,7 @@ import {
   Star,
   Chat as ChatIcon
 } from '@mui/icons-material';
+import ImageGallery from '../components/common/ImageGallery';
 
 const FeatureChip = styled(Chip)(({ theme }) => ({
   margin: theme.spacing(0.5),
@@ -31,10 +30,16 @@ const ServiceDetails = () => {
   const navigate = useNavigate();
   const { services } = useSelector(state => state.services);
   const [service, setService] = useState(null);
-
   useEffect(() => {
     const serviceDetails = services.find(s => s._id === id);
-    setService(serviceDetails);
+    if (serviceDetails) {
+      // Ensure images array is valid
+      const processedService = {
+        ...serviceDetails,
+        images: serviceDetails.images?.length ? serviceDetails.images : [`/images/image_${Math.floor(Math.random() * 35) + 1}.jpeg`]
+      };
+      setService(processedService);
+    }
   }, [id, services]);
 
   const handleAddToCart = () => {
@@ -69,18 +74,12 @@ const ServiceDetails = () => {
         Back to Services
       </Button>
 
-      <Grid container spacing={4}>
-        {/* Left Column - Images */}
+      <Grid container spacing={4}>        {/* Left Column - Images */}
         <Grid item xs={12} md={7}>
-          <Card>
-            <CardMedia
-              component="img"
-              height="400"
-              image={service.images?.[0]}
-              alt={service.name}
-              sx={{ objectFit: 'cover' }}
-            />
-          </Card>
+          <ImageGallery 
+            images={service.images} 
+            altText={service.name}
+          />
         </Grid>
 
         {/* Right Column - Details */}

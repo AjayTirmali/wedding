@@ -27,6 +27,13 @@ const PortfolioViewer = ({ open, onClose, portfolio, providerName }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
 
+  // Function to get the complete image URL
+  const getCompleteImageUrl = (url) => {
+    if (!url) return '/images/placeholder.jpg';
+    if (url.startsWith('http')) return url;
+    return url; // If it's already a relative path like /images/image_1.jpeg, return as is
+  };
+
   // Preload images
   useEffect(() => {
     if (selectedImageIndex !== null) {
@@ -36,7 +43,7 @@ const PortfolioViewer = ({ open, onClose, portfolio, providerName }) => {
       // Preload next and previous images
       [nextIndex, prevIndex].forEach(index => {
         const img = new Image();
-        img.src = portfolio[index].imageUrl;
+        img.src = getCompleteImageUrl(portfolio[index].imageUrl);
       });
     }
   }, [selectedImageIndex, portfolio]);
@@ -143,7 +150,7 @@ const PortfolioViewer = ({ open, onClose, portfolio, providerName }) => {
               ) : (
                 <CardMedia
                   component="img"
-                  image={portfolio[selectedImageIndex].imageUrl}
+                  image={getCompleteImageUrl(portfolio[selectedImageIndex].imageUrl)}
                   alt={portfolio[selectedImageIndex].title}
                   onLoad={() => setIsLoading(false)}
                   onError={() => {
@@ -201,7 +208,7 @@ const PortfolioViewer = ({ open, onClose, portfolio, providerName }) => {
                   <CardMedia
                     component="img"
                     height="200"
-                    image={item.imageUrl}
+                    image={getCompleteImageUrl(item.imageUrl)}
                     alt={item.title}
                   />
                   <CardContent>

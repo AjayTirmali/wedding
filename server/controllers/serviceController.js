@@ -150,60 +150,90 @@ const sampleServices = [
   }
 ];
 
+// Helper function to ensure proper image paths
+const normalizeImagePath = (imageUrl) => {
+  if (!imageUrl) return null;
+  if (imageUrl.startsWith('http')) return imageUrl;
+  if (imageUrl.startsWith('/uploads/')) return imageUrl;
+  if (!imageUrl.startsWith('/')) return `/${imageUrl}`;
+  return imageUrl;
+};
+
+// Function to process service data before sending to client
+const processServiceData = (service) => {
+  if (!service) return null;
+  
+  // Process main service images
+  if (service.images && Array.isArray(service.images)) {
+    service.images = service.images.map(img => normalizeImagePath(img));
+  }
+  
+  // Process provider portfolio images
+  if (service.serviceProviders && Array.isArray(service.serviceProviders)) {
+    service.serviceProviders = service.serviceProviders.map(provider => {
+      if (provider.portfolio && Array.isArray(provider.portfolio)) {
+        provider.portfolio = provider.portfolio.map(item => ({
+          ...item,
+          imageUrl: normalizeImagePath(item.imageUrl)
+        }));
+      }
+      return provider;
+    });
+  }
+  
+  return service;
+};
+
 // Get all services
 exports.getAllServices = async (req, res) => {
   try {
-    const { category, available, sort, minPrice, maxPrice, featured, location, minRating } = req.query;
-    let query = {};
-
-    // Apply filters
-    if (category && category !== 'All') {
-      // Handle both direct category match and alternative categories
-      const categoryMap = {
-        'Planning': ['Planning', 'Full Planning', 'Day-of Coordination'],
-        'Decoration': ['Decoration', 'Venue Decoration', 'Stage Decoration'],
-        'Catering': ['Catering', 'Food Service', 'Beverage Service'],
-        'Photography': ['Photography', 'Videography', 'Photo Booth']
-      };
+    const services = await Service.find();
+    
+    console.log('Raw services from DB:', services.map(s => ({ 
+      id: s._id, 
+      name: s.name, 
+      images: s.images 
+    })));
+    
+    // Transform services to ensure image URLs are correct
+    const transformedServices = services.map(service => {
+      const serviceObj = service.toObject();
       
-      query.category = categoryMap[category] ? { $in: categoryMap[category] } : category;
-    }
-    if (available !== undefined) query.isAvailable = available === 'true';
-    if (featured !== undefined) query.featured = featured === 'true';
-    if (location) query.location = new RegExp(location, 'i'); // Case-insensitive location search
-    if (minRating) query.rating = { $gte: Number(minRating) };
-    if (minPrice || maxPrice) {
-      query.price = {};
-      if (minPrice) query.price.$gte = Number(minPrice);
-      if (maxPrice) query.price.$lte = Number(maxPrice);
-    }
-
-    // Set cache control headers
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-
-    const services = await Service.find(query)
-      .sort(sort || '-createdAt')
-      .populate('createdBy', 'name')
-      .lean();  // Convert to plain JavaScript objects for better performance
+      // Ensure images array exists and has valid URLs
+      if (!serviceObj.images || serviceObj.images.length === 0) {
+        serviceObj.images = [getDefaultImageForCategory(serviceObj.category)];
+      } else {
+        // Transform image URLs to ensure they're valid
+        serviceObj.images = serviceObj.images.map(image => {
+          if (!image) return getDefaultImageForCategory(serviceObj.category);
+          if (image.startsWith('http')) return image;
+          if (image.startsWith('/')) return image;
+          return `/images/${image}`;
+        });
+      }
       
-    // Add metadata to response
-    const response = {
-      services,
-      timestamp: Date.now(),
-      total: services.length,
-      filters: { category, available, minPrice, maxPrice }
-    };
-
-    res.json(services);
-  } catch (err) {
-    console.error('Service retrieval error:', err);
-    res.status(500).json({ 
-      msg: 'Server error while fetching services',
-      error: err.message 
+      return serviceObj;
     });
+    
+    res.json(transformedServices);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
   }
+};
+
+// Helper function to get default image based on category
+const getDefaultImageForCategory = (category) => {
+  const categoryImageMap = {
+    'Decoration': '/images/image_1.jpeg',
+    'Catering': '/images/image_6.jpeg',
+    'Photography': '/images/image_11.jpeg',
+    'Entertainment': '/images/image_16.jpeg',
+    'Venue': '/images/image_21.jpeg',
+    'Transportation': '/images/image_26.jpeg',
+    'Other': '/images/image_31.jpeg'
+  };
+  return categoryImageMap[category] || '/images/image_1.jpeg';
 };
 
 // Get service by ID
@@ -215,7 +245,7 @@ exports.getServiceById = async (req, res) => {
       return res.status(404).json({ msg: 'Service not found' });
     }
     
-    res.json(service);
+    res.json(processServiceData(service));
   } catch (err) {
     console.error(err.message);
     
